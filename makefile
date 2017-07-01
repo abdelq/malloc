@@ -4,4 +4,4 @@ CFLAGS=-g -Wall
 tests: tests.c mymalloc.o
 
 clean:
-	rm tests *.o
+	$(RM) *.o *.out tests
