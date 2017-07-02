@@ -1,5 +1,6 @@
 *.o
 *.out
+*.c~
 
 tests
 tests2

@@ -42,10 +42,6 @@ void *mymalloc(size_t size)
 	block *b = NULL;
 
 	if (first_block) {
-#if DEBUG
-		printf("First block found\n");
-#endif
-
 		block *free_block = first_block;
 		block *last_block = first_block;
 
@@ -69,10 +65,6 @@ void *mymalloc(size_t size)
 			last_block->next = b;
 		}
 	} else {
-#if DEBUG
-		printf("No first block found\n");
-#endif
-
 		b = extend(size);
 
 		if (b == NULL) {
