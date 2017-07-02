@@ -96,13 +96,3 @@ void myfree(void *ptr) {
 
     b -> free = TRUE;
 }
-
-int main() {
-    int *p = mymalloc(sizeof(int));
-    printf("p: %p\n", p);
-
-    *p = 100;
-    printf("*p: %d\n", *p);
-
-    myfree(p);
-}
