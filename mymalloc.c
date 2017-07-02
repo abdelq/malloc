@@ -84,7 +84,7 @@ void *mymalloc(size_t size)
 
 #if DEBUG
 	printf("Address of b: %p\n", b);
-	printf("Address of b -> data: %p\n", b->data);
+	printf("Address of b->data: %p\n", b->data);
 #endif
 
 	return b->data;
@@ -96,7 +96,7 @@ void myfree(void *ptr)
 		return;
 	}
 
-	block *b = ptr - sizeof(block) * sizeof(block);
+	block *b = (block *) ptr - sizeof(block);
 
 	b->free = TRUE;
 }
