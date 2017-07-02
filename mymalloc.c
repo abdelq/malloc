@@ -13,7 +13,10 @@ struct block {
 
 void *first_block = NULL;
 
+// TODO block splitting/merging, maybe when free_block is found ?
+
 block *extend(size_t size) {
+    // TODO one liner w/ macro
     block *b;
     b = mmap(NULL,
             sizeof(block) + size,
@@ -28,7 +31,7 @@ block *extend(size_t size) {
         // TODO Since it's not static, I'm not getting NULL/0 as default value ?
         b->prev = NULL;
         b->next = NULL;
-        /*b->data = 1;*/
+        /*b->data = NULL;*/
 
         return b;
     }
@@ -41,22 +44,25 @@ void *mymalloc(size_t size) {
         return NULL;
     }
 
-    block *b = NULL;
+    block *b = NULL; // TODO maybe get rid of this
     if (first_block) {
-        // TODO Find free block
+        block *last = first_block;
 
-        if (1 != 1) {
-            // TODO if block is found
+        block *free_block = first_block;
+        while (free_block && !(free_block->free && free_block->size >= size)) {
+            last = free_block;
+            free_block = free_block -> next;
+        }
+
+        if (free_block) {
+            b = free_block;
+            b->free = 0;
         } else {
             b = extend(size);
 
             if (!b) {
                 return NULL;
             }
-
-            block *last = first_block;
-
-            // TODO big while loop here
 
             last->next = b;
             b->prev = last;
