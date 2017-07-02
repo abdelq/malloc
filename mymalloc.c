@@ -88,18 +88,21 @@ void *mymalloc(size_t size) {
 }
 
 void myfree(void *ptr) {
-#if DEBUG
-        printf("Address of ptr: %p\n", ptr);
-        printf("Address of ptr - sizeof(block): %p\n", ptr - sizeof(block));
-#endif
+    if (ptr == NULL) {
+        return;
+    }
+
+    block *b = ptr - sizeof(block) * sizeof(block);
+
+    b -> free = TRUE;
 }
 
 int main() {
-    int *p = mymalloc(sizeof(char));
+    int *p = mymalloc(sizeof(int));
     printf("p: %p\n", p);
 
-    *p = 'Q';
-    printf("*p: %c\n", *p);
+    *p = 100;
+    printf("*p: %d\n", *p);
 
     myfree(p);
 }
