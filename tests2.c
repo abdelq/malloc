@@ -229,7 +229,8 @@ int main() {
 
     long res = 0;
     TEST_NOSEGFAULT(res=test6(), 6);
-    if (res == 632474318)
+    /*if (res == 632474318)*/
+    if (res == 8823938)
         printf("Test 7 %ld OK\n", res);
     else
         printf("Test 7 %ld KO\n", res);
