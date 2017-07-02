@@ -5,8 +5,8 @@
 
 #define TRUE 1
 #define FALSE 0
-#define MMAP(size) mmap(NULL, sizeof(block) + (size), \
-        PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+#define MMAP(size) mmap(NULL, (size), PROT_READ | PROT_WRITE, \
+        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
 
 typedef struct block {
 	size_t size;
@@ -19,7 +19,7 @@ void *first_block = NULL;
 
 block *extend(size_t size)
 {
-	block *b = MMAP(size);
+	block *b = MMAP(sizeof(block) + size);
 
 	if (b == MAP_FAILED) {
 		return NULL;
@@ -84,7 +84,7 @@ void *mymalloc(size_t size)
 
 void myfree(void *ptr)
 {
-	if (ptr == NULL) {
+	if (ptr == NULL || ptr < first_block || ptr > MMAP(0)) {
 		return;
 	}
 
