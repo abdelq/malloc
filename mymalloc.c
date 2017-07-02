@@ -1,42 +1,35 @@
-#include <sys/mman.h>
 #include <stdio.h>
+#include <sys/mman.h>
+
 #include "mymalloc.h"
 
-typedef struct block block;
+#define TRUE 1
+#define FALSE 0
+#define MMAP(size) mmap(NULL, sizeof(block) + (size), \
+        PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
 
-struct block {
-    size_t size;
-    int    free;
-    block  *prev, *next;
-    void   *data;
-};
+typedef struct block {
+    size_t         size;
+    unsigned short free : 1;
+    struct block   *next;
+    void           *data;
+} block;
 
 void *first_block = NULL;
 
-// TODO block splitting/merging, maybe when free_block is found ?
-
 block *extend(size_t size) {
-    // TODO one liner w/ macro
-    block *b;
-    b = mmap(NULL,
-            sizeof(block) + size,
-            PROT_READ | PROT_WRITE,
-            MAP_PRIVATE | MAP_ANONYMOUS,
-            -1,
-            0);
+    block *b = MMAP(size);
 
-    if (b != MAP_FAILED) {
-        b->size = size;
-        b->free = 0;
-        // TODO Since it's not static, I'm not getting NULL/0 as default value ?
-        b->prev = NULL;
-        b->next = NULL;
-        /*b->data = NULL;*/
-
-        return b;
+    if (b == MAP_FAILED) {
+        return NULL;
     }
 
-    return NULL;
+    b -> size = size;
+    b -> free = FALSE;
+    b -> next = NULL;
+    b -> data = b + sizeof(block);
+
+    return b;
 }
 
 void *mymalloc(size_t size) {
@@ -44,44 +37,69 @@ void *mymalloc(size_t size) {
         return NULL;
     }
 
-    block *b = NULL; // TODO maybe get rid of this
+    block *b = NULL;
+
     if (first_block) {
-        block *last = first_block;
+#if DEBUG
+        printf("First block found\n");
+#endif
 
         block *free_block = first_block;
-        while (free_block && !(free_block->free && free_block->size >= size)) {
-            last = free_block;
+        block *last_block = first_block;
+
+        // Find a free block
+        while (free_block && !(free_block -> free && free_block -> size >= size)) {
+            last_block = free_block;
             free_block = free_block -> next;
         }
 
         if (free_block) {
             b = free_block;
-            b->free = 0;
+            b -> free = FALSE;
         } else {
             b = extend(size);
 
-            if (!b) {
+            if (b == NULL) {
                 return NULL;
             }
 
-            last->next = b;
-            b->prev = last;
+            last_block -> next = b;
         }
     } else {
+#if DEBUG
+        printf("No first block found\n");
+#endif
+
         b = extend(size);
 
-        if (!b) {
+        if (b == NULL) {
             return NULL;
         }
 
         first_block = b;
     }
 
-    return b->data;
+#if DEBUG
+        printf("Address of b: %p\n", b);
+        printf("Address of b -> data: %p\n", b -> data);
+#endif
+
+    return b -> data;
 }
 
 void myfree(void *ptr) {
+#if DEBUG
+        printf("Address of ptr: %p\n", ptr);
+        printf("Address of ptr - sizeof(block): %p\n", ptr - sizeof(block));
+#endif
 }
 
-int main(void) {
+int main() {
+    int *p = mymalloc(sizeof(char));
+    printf("p: %p\n", p);
+
+    *p = 'Q';
+    printf("*p: %c\n", *p);
+
+    myfree(p);
 }
