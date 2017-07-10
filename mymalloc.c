@@ -41,7 +41,7 @@ void *mymalloc(size_t size)
 		block *free_block = first_free_block;
 
 		// Find a free block with a size big enough
-		while (free_block && size < free_block->size) {
+		while (free_block && free_block->size < size) {
 			free_block = free_block->next;
 		}
 
@@ -80,7 +80,6 @@ void *mymalloc(size_t size)
 	return b->data;
 }
 
-// TODO Fix this
 void myfree(void *ptr)
 {
 	// Make sure the pointer is in a valid range
@@ -91,28 +90,34 @@ void myfree(void *ptr)
 
 	block *b = (block *) ptr - sizeof(block);
 
-	b->free = TRUE;
+	// Put back the block to the free blocks list
+	if (first_free_block == NULL) {
+		first_free_block = b;
 
-	if (freeBlocks == NULL)
-		freeBlocks = b;
-	else {
-		block *blck = first_block;
-		block *freeBlck = freeBlocks;
-		block *lastFree = NULL;
-		while (blck != b && freeBlck != NULL) {
-			if (blck == freeBlck) {
-				lastFree = freeBlck;
-				freeBlck = freeBlck->next;
-			}
-			blck = blck->next;
-		}
+		b->prev = NULL;
+		b->next = NULL;
 
-		if (freeBlck != NULL) {
-			b->nextFree = freeBlck;
-			lastFree->nextFree = b;
-		} else
-			lastFree->nextFree = b;
-
+		return;
 	}
 
+	block *prev_block = NULL;
+	block *next_block = first_free_block;
+
+	while (next_block && next_block < b) {
+		prev_block = next_block;
+		next_block = next_block->next;
+	}
+
+	b->prev = prev_block;
+	b->next = next_block;
+
+	if (prev_block) {
+		prev_block->next = b;
+	} else {
+		first_free_block = b;
+	}
+
+	if (next_block) {
+		next_block->prev = b;
+	}
 }
