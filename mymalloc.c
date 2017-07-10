@@ -3,22 +3,17 @@
 
 #include "mymalloc.h"
 
-#define TRUE 1
-#define FALSE 0
 #define MMAP(size) mmap(NULL, (size), PROT_READ | PROT_WRITE, \
         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
 
 typedef struct block {
 	size_t size;
-	unsigned short free:1;
+	struct block *prev;
 	struct block *next;
-	struct block *nextFree;
 	void *data;
 } block;
 
-void *first_block = NULL;
-block *freeBlocks = NULL;
-block *last_block = NULL;
+void *first_free_block = NULL;
 
 block *extend(size_t size)
 {
@@ -29,9 +24,8 @@ block *extend(size_t size)
 	}
 
 	b->size = size;
-	b->free = FALSE;
+	b->prev = NULL;
 	b->next = NULL;
-	b->nextFree = NULL;
 	b->data = b + sizeof(block);
 
 	return b;
@@ -43,45 +37,41 @@ void *mymalloc(size_t size)
 		return NULL;
 	}
 
-	block *b = NULL;
+	if (first_free_block) {
+		block *free_block = first_free_block;
 
-	if (first_block) {
-		block *free_block = freeBlocks;
-		block *last_free_block = freeBlocks;
-
-		// Find a free block
-		while (free_block && size >= free_block->size) {
-			last_free_block = free_block;
-			free_block = free_block->nextFree;
+		// Find a free block with a size big enough
+		while (free_block && size < free_block->size) {
+			free_block = free_block->next;
 		}
 
 		if (free_block) {
-			last_free_block->nextFree = free_block->nextFree;
-			b = free_block;
-			b->free = FALSE;
+			if (free_block == first_free_block) {
+				first_free_block = free_block->next;
+			} else {
+				if (free_block->next) {
+					free_block->next->prev =
+					    free_block->prev;
+				}
 
-		} else {
-			b = extend(size);
-
-			if (b == NULL) {
-				return NULL;
+				free_block->prev->next = free_block->next;
 			}
 
-			last_block->next = b;
-			last_block = b;
+#if DEBUG
+			printf("Address of free_block: %p\n", free_block);
+			printf("Address of free_block->data: %p\n",
+			       free_block->data);
+#endif
+
+			return free_block->data;
 		}
-	} else {
-		b = extend(size);
-
-		if (b == NULL) {
-			return NULL;
-		}
-
-		first_block = b;
-		last_block = b;
-
 	}
 
+	block *b = extend(size);
+
+	if (b == NULL) {
+		return NULL;
+	}
 #if DEBUG
 	printf("Address of b: %p\n", b);
 	printf("Address of b->data: %p\n", b->data);
@@ -90,13 +80,16 @@ void *mymalloc(size_t size)
 	return b->data;
 }
 
+// TODO Fix this
 void myfree(void *ptr)
 {
-	if (ptr == NULL || ptr < first_block || ptr > MMAP(0)) {
+	// Make sure the pointer is in a valid range
+	// TODO Maybe remove the call to the MMAP(0)
+	if (ptr == NULL || ptr < first_free_block || ptr > MMAP(0)) {
 		return;
 	}
 
-	block *b = (block *) ptr;
+	block *b = (block *) ptr - sizeof(block);
 
 	b->free = TRUE;
 
