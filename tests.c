@@ -4,10 +4,11 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <string.h>
 #include <setjmp.h>
 #include "mymalloc.h"
 
-// Context pour gérer une segfault.
+// Context pour recover de segfault.
 jmp_buf ctx;
 
 // Free doit accepter le pointeur NULL
@@ -24,9 +25,8 @@ void test2(){
 
 // Test simple pour voir si free fonctionne
 // Chaque demande entre dans un bloc mémoire de 4 Ko
-// Alloue environ 9.5 Go is la mémoire n'est pas récupérée
 void test3(){
-  for (int i = 0; i < 5000000; i++){
+  for (int i = 0; i < 500000; i++){
     int *a = mymalloc(sizeof(int) * 512);
     for(int j = 0; j < 512; j ++){
       a[j]= j;
@@ -46,7 +46,6 @@ void test4(){
 
 // Test simple pour voir si free fonctionne avec un malloc de grande taille
 // Il suffit de regarder la mémoire utiliser par le programme
-// Alloue environ 40 Go si la mémoire n'est pas récupérée
 void test5(){
   for (int i = 0; i < 10000; i++){
     int *a = mymalloc(sizeof(int) * 1024 * 1024);
@@ -76,8 +75,7 @@ int test6(){
 
   // Création d'une liste doublement chaînée
   node *current = root;
-  for(int i = 0; i < 4 * 1024; i ++){
-  /*for(int i = 0; i < 4 * 1024 * 1024; i ++){*/
+  for(int i = 0; i < 4 * 1024 * 1024; i ++){
     node *p = mymalloc(sizeof(node));
     p->valueInt = i;
     p->valueChar = 115;
@@ -131,6 +129,7 @@ int test6(){
       p->valueChar = 115;
       p->next = current->next;
       p->previous = current;
+      current->next->previous = p;
       current->next = p;
       current = p->next;
     }
@@ -160,11 +159,24 @@ int test6(){
   return sum;
 }
 
-
 void sigseg_handler(int signum) {
+#if defined(_WIN32) || defined(_WIN64)
+  signal(SIGSEGV, &sigseg_handler);
+#endif
   printf("**Segfault\n");
   longjmp(ctx, 1);
 }
+
+#if !defined(_WIN32) && !defined(_WIN64)
+#define signal(signum, handler)\
+  do {\
+    struct sigaction act; \
+    memset(&act, '\0', sizeof(act));\
+    act.sa_handler = handler;\
+    act.sa_flags = SA_NODEFER;\
+    sigaction(SIGSEGV, &act, NULL); \
+  } while (0)
+#endif
 
 #define TEST_NOSEGFAULT(test, number) \
   if(!setjmp(ctx)) {\
@@ -188,11 +200,10 @@ int main(){
 
   long res = 0;
   TEST_NOSEGFAULT(res=test6(), 6);
-  /*if (res == 632474318)*/
-  if (res == 8823938)
-    printf("Test 6 bonne réponse %ld OK\n", res);
+  if (res == 632474318)
+    printf("Test 6 %ld OK\n", res);
   else
-    printf("Test 6 mauvaise réponse %ld KO\n", res);
+    printf("Test 6 %ld KO\n", res);
 
   printf("Done\n");
   return 0;
