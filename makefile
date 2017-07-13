@@ -1,9 +1,11 @@
 CC=gcc
-CFLAGS=-g -Wall
+CFLAGS=-std=gnu11 -Wall -Wextra -pedantic
 
-tests: tests.c mymalloc.o
+test: tests.c mymalloc.c mymalloc.h
+	$(CC) $(CFLAGS) tests.c mymalloc.c -o test
 
-tests2: tests2.c mymalloc.o
+indent: mymalloc.c
+	indent -linux mymalloc.c
 
 clean:
-	rm -f *.o *.out tests
+	$(RM) test *.c~

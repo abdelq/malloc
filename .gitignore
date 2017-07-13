@@ -1,6 +1,5 @@
-*.o
-*.out
-*.c~
+# Test
+test
 
-tests
-tests2
+# Indent
+*.c~
