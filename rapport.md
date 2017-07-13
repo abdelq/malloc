@@ -1,11 +1,13 @@
---- 
-title: TP 2 -- Rapport
-author: Abdelhakim Qbaich
-        - David Boivin 
-date: \today
-header-includes: \usepackage[french]{babel}
-
 ---
+title: Rapport -- TP 2
+author:
+    - Abdelhakim Qbaich
+    - David Boivin 
+date: \today
+header-includes:
+    - \usepackage[french]{babel}
+...
+
 # Notre expérience
 
 ## Description du travail
@@ -53,11 +55,3 @@ dans un langage de programmation. Ceci va nous être utile pour le
 reste de carrière en informatique puisque c'est un éléments importants
 de chaque langages de programmation. Nous étions très content d'avoir
 réussit ce travail.
-
-
-
-
-
-
-
-
