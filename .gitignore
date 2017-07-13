@@ -1,5 +1,4 @@
-# Test
 test
 
-# Indent
+*.o
 *.c~
