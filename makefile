@@ -12,7 +12,10 @@ debug: indent tests.c mymalloc.c mymalloc.h
 indent: mymalloc.c
 	indent -linux mymalloc.c
 
+rapport: rapport.md
+	pandoc -o Rapport_Qbaich-Boivin.pdf rapport.md
+
 clean:
-	$(RM) tests debug *.o *.out *.c~ *.log
+	$(RM) tests debug *.o *.out *.c~ *.log *.pdf
 
 .PHONY: all indent clean
