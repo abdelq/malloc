@@ -6,84 +6,110 @@
 #define MMAP(size) mmap(NULL, (size), PROT_READ | PROT_WRITE, \
         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
 
-// TODO data might not be a useful pointer, just give out b + sizeofblock as address
-typedef struct block {
+// Size limits (4 KiB to 5 MiB)
+#define MIN_SIZE 4096
+#define MAX_SIZE 4194304
+
+typedef struct block block;
+struct block {
 	size_t size;
-	struct block *prev;
-	struct block *next;
+	block *next;
 	void *data;
-} block;
+};
 
-void *first_free_block = NULL;
+// First free block
+void *first_block = NULL;
 
-block *extend(size_t size)
+block *extend_heap(size_t size)
 {
+#if DEBUG
+	fprintf(stderr, "extend_heap(%zu)\n", size);
+	fflush(stderr);
+#endif
+
+	if (size < MIN_SIZE)
+		size = MIN_SIZE;
+
 	block *b = MMAP(sizeof(block) + size);
 
-	if (b == MAP_FAILED) {
+	if (b == MAP_FAILED)
 		return NULL;
-	}
 
 	b->size = size;
-	b->prev = NULL;
 	b->next = NULL;
-	b->data = b + sizeof(block);
+	b->data = b + 1;
+
+#if DEBUG
+	fprintf(stderr, "size: %zu, next: %p, data: %p\n", b->size, b->next,
+		b->data);
+	fflush(stderr);
+#endif
 
 	return b;
 }
 
-void *mymalloc(size_t size)
+block *find_block(block ** prev, size_t size)
 {
-	if (!size) {
-		return NULL;
+	block *curr = first_block;
+
+	while (curr && curr->size < size) {
+		*prev = curr;
+		curr = curr->next;
 	}
 
-	if (first_free_block) {
-		/*printf("First block is free\n"); */
-		block *free_block = first_free_block;
-		/*printf("Size of first free block: %ld\n", free_block->size); */
-		/*printf("Size needed: %ld\n", size); */
+	return curr;
+}
 
-		// TODO free_block probably ends up beign null ?
-		// Find a free block with a size big enough
-		while (free_block && free_block->size < size) {
-			free_block = free_block->next;
-		}
+void *mymalloc(size_t size)
+{
+#if DEBUG
+	fprintf(stderr, "mymalloc(%zu)\n", size);
+	fflush(stderr);
+#endif
+
+	if (!size || size > MAX_SIZE)
+		return NULL;
+
+	if (first_block) {
+		block *prev_block = first_block;
+		block *free_block = find_block(&prev_block, size);
 
 		if (free_block) {
-			if (free_block == first_free_block) {
-				first_free_block = free_block->next;
-			} else {
-				if (free_block->next) {
-					free_block->next->prev =
-					    free_block->prev;
-				}
+			// TODO Block splitting
 
-				free_block->prev->next = free_block->next;
-			}
+			if (free_block == first_block)
+				first_block = free_block->next;
+			else
+				prev_block->next = free_block->next;
 
 #if DEBUG
-			printf("Address of free_block: %p\n", free_block);
-			printf("Address of free_block->data: %p\n",
-			       free_block->data);
+			fprintf(stderr, "Address of free_block: %p\n",
+				free_block);
+			fprintf(stderr, "Address of free_block->data: %p\n",
+				free_block->data);
+			fprintf(stderr, "Size of free_block: %zu\n",
+				free_block->size);
 
-			printf("Size of free_block: %ld\n", free_block->size);
+			fflush(stderr);
 #endif
 
 			return free_block->data;
 		}
 	}
 
-	block *new_block = extend(size);
+	block *new_block = extend_heap(size);
 
-	if (new_block == NULL) {
+	if (!new_block)
 		return NULL;
-	}
-#if DEBUG
-	printf("Address of new_block: %p\n", new_block);
-	printf("Address of new_block->data: %p\n", new_block->data);
 
-	printf("Size of new_block: %ld\n", new_block->size);
+	// TODO Block splitting if size < MIN_SIZE
+
+#if DEBUG
+	fprintf(stderr, "Address of new_block: %p\n", new_block);
+	fprintf(stderr, "Address of new_block->data: %p\n", new_block->data);
+	fprintf(stderr, "Size of new_block: %zu\n", new_block->size);
+
+	fflush(stderr);
 #endif
 
 	return new_block->data;
@@ -91,74 +117,47 @@ void *mymalloc(size_t size)
 
 void myfree(void *ptr)
 {
-	// TODO Make sure the pointer is in a valid range
-	if (ptr == NULL) {
-		/*printf("Something wrong happened with ptr in myefree %p\n", ptr); */
+#if DEBUG
+	fprintf(stderr, "myfree(%p)\n", ptr);
+	fflush(stderr);
+#endif
+
+	if (!ptr || ptr > MMAP(0))
 		return;
-	}
 
-	block *b = (block *) ptr - sizeof(block);
+	// Pointer to the block
+	block *b = (block *) ptr - 1;
 
-	/*printf("Size of block I'm trying to delete: %ld\n", b->size); */
+	if (b->data != ptr)
+		return;
 
-	// Put back the block to the free blocks list
-	if (first_free_block == NULL) {
-		first_free_block = b;
-
-		b->prev = NULL;
+	// Add block to list
+	if (first_block == NULL) {
+		first_block = b;
 		b->next = NULL;
 
 		return;
 	}
 
-	block *prev_block = NULL;
-	block *next_block = first_free_block;
+	if ((void *)b > first_block) {
+		b->next = first_block;
+		first_block = b;
 
-	// TODO Make sure it's <, not > I feel like the addresses are going down, not up...
-	while (next_block && next_block < b) {
-		prev_block = next_block;
-		next_block = next_block->next;
+		return;
 	}
 
-	b->prev = prev_block;
-	b->next = next_block;
+	block *curr = first_block;
+	while (curr->next && curr->next > b) {
+		curr = curr->next;
+	}
 
-	if (prev_block) {
-		prev_block->next = b;
+	if (curr->next) {
+		b->next = curr->next;
+		curr->next = b;
 	} else {
-		first_free_block = b;
+		curr->next = b;
+		b->next = NULL;
 	}
 
-	if (next_block) {
-		next_block->prev = b;
-	}
+	// TODO Block merging
 }
-
-// TODO Make sure the free/malloc mechanism works with the linked list crap he is using in test6
-
-/*int main() {
-    for (int i = 0; i < 5000000; i++){
-        int *a = mymalloc(sizeof(int) * 512);
-        for(int j = 0; j < 512; j ++){
-            a[j]= j;
-        }
-        myfree(a);
-    }
-}*/
-
-/*
-int main()
-{
-     for (int i = 0; i < 10000; i++) {
-	int *a = mymalloc(sizeof(int) * 1024 * 1024);
-
-	for (int j = 0; j < 1024 * 1024; j += 1000) {
-		a[j] = j;
-	}
-
-	printf("%d\n", a[4000]);
-
-	myfree(a);
-    }
-}
-*/

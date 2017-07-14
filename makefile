@@ -12,4 +12,4 @@ indent: mymalloc.c
 	indent -linux mymalloc.c
 
 clean:
-	$(RM) test *.o *.c~
+	$(RM) test *.o *.out *.c~
