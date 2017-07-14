@@ -40,8 +40,8 @@ block *extend_heap(size_t size)
 	b->data = b + 1;
 
 #if DEBUG
-	fprintf(stderr, "size: %zu, next: %p, data: %p\n", b->size, b->next,
-		b->data);
+	fprintf(stderr, "size: %zu, next: %p, data: %p\n", b->size,
+		(void *)b->next, b->data);
 	fflush(stderr);
 #endif
 
@@ -84,7 +84,7 @@ void *mymalloc(size_t size)
 
 #if DEBUG
 			fprintf(stderr, "Address of free_block: %p\n",
-				free_block);
+				(void *)free_block);
 			fprintf(stderr, "Address of free_block->data: %p\n",
 				free_block->data);
 			fprintf(stderr, "Size of free_block: %zu\n",
@@ -105,7 +105,7 @@ void *mymalloc(size_t size)
 	// TODO Block splitting if size < MIN_SIZE
 
 #if DEBUG
-	fprintf(stderr, "Address of new_block: %p\n", new_block);
+	fprintf(stderr, "Address of new_block: %p\n", (void *)new_block);
 	fprintf(stderr, "Address of new_block->data: %p\n", new_block->data);
 	fprintf(stderr, "Size of new_block: %zu\n", new_block->size);
 
