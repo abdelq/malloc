@@ -8,7 +8,7 @@
 
 // Size limits (4 KiB to 5 MiB)
 #define MIN_SIZE 4096
-#define MAX_SIZE 4194304
+#define MAX_SIZE 5242880
 
 typedef struct block block;
 struct block {
@@ -28,7 +28,7 @@ block *extend_heap(size_t size)
 #endif
 
 	if (size < MIN_SIZE)
-		size = MIN_SIZE;
+		size = MIN_SIZE - sizeof(block);
 
 	block *b = MMAP(sizeof(block) + size);
 
@@ -36,16 +36,45 @@ block *extend_heap(size_t size)
 		return NULL;
 
 	b->size = size;
-	b->next = NULL;
 	b->data = b + 1;
 
 #if DEBUG
-	fprintf(stderr, "size: %zu, next: %p, data: %p\n", b->size,
-		(void *)b->next, b->data);
+	fprintf(stderr, "block: %p, size: %zu, next: %p, data: %p\n", (void *)b,
+		b->size, (void *)b->next, b->data);
 	fflush(stderr);
 #endif
 
 	return b;
+}
+
+void split_block(block * old, size_t size)
+{
+#if DEBUG
+	fprintf(stderr, "split_block(%p, %zu)\n", (void *)old, size);
+	fflush(stderr);
+#endif
+
+	if (sizeof(block) + size > old->size)
+		return;
+
+	// New block
+	block *new = old->data + size;
+	new->size = old->size - (sizeof(block) + size);
+	new->data = new + 1;
+
+	// Old block
+	old->size = size;
+
+	myfree(new->data);	// TODO Find a better way
+
+#if DEBUG
+	fprintf(stderr, "Old block: %p, size: %zu, next: %p, data: %p\n",
+		(void *)old, old->size, (void *)old->next, (void *)old->data);
+	fprintf(stderr, "New block: %p, size: %zu, next: %p, data: %p\n",
+		(void *)new, new->size, (void *)new->next, (void *)new->data);
+
+	fflush(stderr);
+#endif
 }
 
 block *find_block(block ** prev, size_t size)
@@ -71,16 +100,17 @@ void *mymalloc(size_t size)
 		return NULL;
 
 	if (first_block) {
+		// TODO Apply "Good Taste"
 		block *prev_block = first_block;
 		block *free_block = find_block(&prev_block, size);
 
 		if (free_block) {
-			// TODO Block splitting
-
 			if (free_block == first_block)
 				first_block = free_block->next;
 			else
 				prev_block->next = free_block->next;
+
+			split_block(free_block, size);
 
 #if DEBUG
 			fprintf(stderr, "Address of free_block: %p\n",
@@ -96,13 +126,13 @@ void *mymalloc(size_t size)
 			return free_block->data;
 		}
 	}
-
+	// Request a new block
 	block *new_block = extend_heap(size);
 
 	if (!new_block)
 		return NULL;
 
-	// TODO Block splitting if size < MIN_SIZE
+	split_block(new_block, size);
 
 #if DEBUG
 	fprintf(stderr, "Address of new_block: %p\n", (void *)new_block);
@@ -138,7 +168,7 @@ void myfree(void *ptr)
 
 		return;
 	}
-
+	// TODO Apply "Good Taste"
 	if ((void *)b > first_block) {
 		b->next = first_block;
 		first_block = b;

@@ -1,6 +1,6 @@
 CC=gcc
 
-all: test
+all: indent mymalloc.o test
 
 test: tests.c mymalloc.o
 	$(CC) tests.c mymalloc.o -o test
@@ -12,4 +12,4 @@ indent: mymalloc.c
 	indent -linux mymalloc.c
 
 clean:
-	$(RM) test *.o *.out *.c~
+	$(RM) test *.o *.out *.c~ *.log
