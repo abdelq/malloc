@@ -3,6 +3,7 @@
 
 #include "mymalloc.h"
 
+#define WORD_ALIGN(size) (((size) + (sizeof(size_t) - 1)) & ~(sizeof(size_t) - 1))
 #define MMAP(size) mmap(NULL, (size), PROT_READ | PROT_WRITE, \
         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
 
@@ -98,6 +99,9 @@ void *mymalloc(size_t size)
 
 	if (!size || size > MAX_SIZE)
 		return NULL;
+
+	// Align block
+	size = WORD_ALIGN(size);
 
 	if (first_block) {
 		// TODO Apply "Good Taste"
