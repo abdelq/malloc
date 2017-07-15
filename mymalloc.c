@@ -173,7 +173,8 @@ void myfree(void *ptr)
 		return;
 	}
 	// TODO Apply "Good Taste"
-	if ((void *)b > first_block) {
+	// TODO Make sure logic is valid
+	if ((void *)b < first_block) {
 		b->next = first_block;
 		first_block = b;
 
@@ -181,7 +182,7 @@ void myfree(void *ptr)
 	}
 
 	block *curr = first_block;
-	while (curr->next && curr->next > b) {
+	while (curr->next && curr->next < b) {
 		curr = curr->next;
 	}
 
@@ -193,5 +194,16 @@ void myfree(void *ptr)
 		b->next = NULL;
 	}
 
-	// TODO Block merging
+	// Block merging
+	// TODO Merge with prev too
+	if (b->next == (void *)b + sizeof(block) + b->size) {
+#if DEBUG
+		fprintf(stderr, "Merging %p with %p\n", (void *)b,
+			(void *)b->next);
+		fflush(stderr);
+#endif
+
+		b->size += b->next->size;
+		b->next = b->next->next;
+	}
 }

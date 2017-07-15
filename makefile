@@ -1,6 +1,6 @@
 CC=gcc
 
-all: indent mymalloc.o test
+all: mymalloc.o test
 
 test: tests.c mymalloc.o
 	$(CC) tests.c mymalloc.o -o test
