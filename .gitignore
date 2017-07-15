@@ -1,5 +1,7 @@
-test
+tests
+debug
 
 *.o
 *.out
 *.c~
+*.log
