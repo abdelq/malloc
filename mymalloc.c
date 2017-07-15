@@ -11,12 +11,12 @@
 #define MIN_SIZE (4096 - sizeof(block))
 #define MAX_SIZE (5242880 - sizeof(block))
 
-typedef struct block {
-	struct block *next;
-	struct block *prev;
+typedef struct block block;
+struct block {
+	block *next, *prev;
 	size_t size;
 	void *data;
-} block;
+};
 
 block *first_block = NULL;	// First free block
 
@@ -28,15 +28,13 @@ block *extend_heap(size_t size)
 #endif
 
 	if (size < MIN_SIZE)
-		size = MIN_SIZE;
+		size = WORD_ALIGN(MIN_SIZE);
 
 	block *b = MMAP(sizeof(block) + size);
 
 	if (b == MAP_FAILED)
 		return NULL;
 
-	b->next = NULL;		// TODO
-	b->prev = NULL;		// TODO
 	b->size = size;
 	b->data = b + 1;
 
@@ -64,8 +62,8 @@ void split_block(block * old, size_t size)
 
 	// New block
 	new = old->data + size;
-	new->next = NULL;	// TODO
-	new->prev = NULL;	// TODO
+	new->next = NULL;
+	new->prev = NULL;
 	new->size = old->size - (sizeof(block) + size);
 	new->data = new + 1;
 
@@ -82,6 +80,33 @@ void split_block(block * old, size_t size)
 
 	fflush(stderr);
 #endif
+}
+
+void merge_block(block * b)
+{
+	while (b->prev == (void *)b - b->size - sizeof(block)) {
+#if DEBUG
+		fprintf(stderr, "Merging down %p with %p\n",
+			(void *)b, (void *)b->prev);
+		fflush(stderr);
+#endif
+
+		b->prev->size += b->size;
+		remque(b);
+
+		b = b->prev;
+	}
+
+	while (b->next == (void *)b + sizeof(block) + b->size) {
+#if DEBUG
+		fprintf(stderr, "Merging up %p with %p\n",
+			(void *)b, (void *)b->next);
+		fflush(stderr);
+#endif
+
+		b->size += b->next->size;
+		remque(b->next);
+	}
 }
 
 block *find_free_block(size_t size)
@@ -181,9 +206,7 @@ void myfree(void *ptr)
 
 	// Add block to list
 	if (first_block == NULL) {
-		b->next = NULL;	// TODO
-		b->prev = NULL;	// TODO
-		// insque(b, NULL); // TODO
+		insque(b, NULL);
 		first_block = b;
 		return;
 	}
@@ -191,8 +214,6 @@ void myfree(void *ptr)
 	block *right_block = find_right_block(b);
 
 	if (right_block) {
-		b->next = NULL;	// TODO
-		b->prev = NULL;	// TODO
 		insque(b, right_block);
 	} else {
 		b->prev = NULL;
@@ -203,25 +224,5 @@ void myfree(void *ptr)
 	}
 
 	// Block merging
-	if (b->prev == (void *)b - b->size - sizeof(block)) {
-#if DEBUG
-		fprintf(stderr, "Merging down %p with %p\n", (void *)b,
-			(void *)b->prev);
-		fflush(stderr);
-#endif
-
-		b->prev->size += b->size;
-		remque(b);
-	}
-
-	if (b->next == (void *)b + sizeof(block) + b->size) {
-#if DEBUG
-		fprintf(stderr, "Merging up %p with %p\n", (void *)b,
-			(void *)b->next);
-		fflush(stderr);
-#endif
-
-		b->size += b->next->size;
-		remque(b->next);
-	}
+	merge_block(b);
 }
