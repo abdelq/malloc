@@ -8,8 +8,8 @@
         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
 
 // Size limits (4 KiB to 5 MiB)
-#define MIN_SIZE 4096
-#define MAX_SIZE 5242880
+#define MIN_SIZE (4096 - sizeof(block))
+#define MAX_SIZE (5242880 - sizeof(block))
 
 typedef struct block block;
 struct block {
@@ -19,7 +19,7 @@ struct block {
 };
 
 // First free block
-void *first_block = NULL;
+block *first_block = NULL;
 
 block *extend_heap(size_t size)
 {
@@ -29,7 +29,7 @@ block *extend_heap(size_t size)
 #endif
 
 	if (size < MIN_SIZE)
-		size = MIN_SIZE - sizeof(block);
+		size = MIN_SIZE;
 
 	block *b = MMAP(sizeof(block) + size);
 
@@ -174,7 +174,7 @@ void myfree(void *ptr)
 	}
 	// TODO Apply "Good Taste"
 	// TODO Make sure logic is valid
-	if ((void *)b < first_block) {
+	if (b < first_block) {
 		b->next = first_block;
 		first_block = b;
 
