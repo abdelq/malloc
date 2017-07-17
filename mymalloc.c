@@ -37,16 +37,6 @@ block *extend_heap(size_t size)
 	return b;
 }
 
-block *find_free_block(size_t size)
-{
-	block *curr_block = first_block;
-
-	while (curr_block && curr_block->size < size)
-		curr_block = curr_block->next;
-
-	return curr_block;
-}
-
 void split_block(block * old, size_t size)
 {
 	// New block
@@ -74,8 +64,7 @@ void split_block(block * old, size_t size)
 #endif
 }
 
-// TODO Rename
-void alloc_block(block * b)
+void rm_block(block * b)
 {
 	if (first_block == b)
 		first_block = b->next;
@@ -103,13 +92,17 @@ void *mymalloc(size_t size)
 		return NULL;
 
 	if (first_block) {
-		block *free_block = find_free_block(size);
+		// Find a free block
+		block *free_block = first_block;
+
+		while (free_block && free_block->size < size)
+			free_block = free_block->next;
 
 		if (free_block) {
 			if (free_block->size > size + sizeof(block))
 				split_block(free_block, size);
 
-			alloc_block(free_block);
+			rm_block(free_block);
 
 #if DEBUG
 			fprintf(stderr, "Free block: %p, size: %zu, data: %p\n",
@@ -130,7 +123,7 @@ void *mymalloc(size_t size)
 	if (new_block->size > size + sizeof(block))
 		split_block(new_block, size);
 
-	alloc_block(new_block);
+	rm_block(new_block);
 
 #if DEBUG
 	fprintf(stderr, "Created block: %p, size: %zu, data: %p\n",
@@ -140,52 +133,6 @@ void *mymalloc(size_t size)
 
 	return new_block->data;
 }
-
-block *find_right_block(block * b)
-{
-	block *prev_block = NULL;
-	block *curr_block = first_block;
-
-	while (curr_block && b > curr_block) {
-		prev_block = curr_block;
-		curr_block = curr_block->next;
-	}
-
-	return prev_block;
-}
-
-/*
-void merge_block(block * b)
-{
-	// TODO while might work better
-	// TODO Might not need the first clause
-	// TODO Check which case goes first and where the variable change is due
-	// TODO Change first_block ?
-	while (b->prev == (void *)b - b->size - sizeof(block)) {
-#if DEBUG
-		fprintf(stderr, "Merging down %p with %p\n",
-			(void *)b, (void *)b->prev);
-		fflush(stderr);
-#endif
-
-		b->prev->size += b->size; // TODO Missing struct size ?
-		remque(b);
-
-		b = b->prev;
-	}
-
-	while (b->next == (void *)b + sizeof(block) + b->size) {
-#if DEBUG
-		fprintf(stderr, "Merging up %p with %p\n",
-			(void *)b, (void *)b->next);
-		fflush(stderr);
-#endif
-
-		b->size += b->next->size; // TODO Missing struct size ?
-		remque(b->next);
-	}
-}
-*/
 
 void myfree(void *ptr)
 {
@@ -197,27 +144,21 @@ void myfree(void *ptr)
 	if (!ptr || ptr > MMAP(0))
 		return;
 
-	// Pointer to the block
 	block *b = (block *) ptr - 1;
 
 	if (b->data != ptr)
 		return;
 
 	// Add block to list
-	if (first_block == NULL) {
-		first_block = b;
+	b->prev = NULL;
+	b->next = NULL;
 
-		b->prev = NULL;
-		b->next = NULL;
-
-		return;
+	if (first_block) {
+		b->next = first_block;
+		b->next->prev = b;
 	}
 
-	b->prev = NULL;
-	b->next = first_block;
-
-	b->next->prev = b;
 	first_block = b;
 
-	// merge_block(b); // TODO Block merging
+	// TODO Block merging
 }
