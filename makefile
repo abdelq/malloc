@@ -1,7 +1,7 @@
 CC=gcc
-CFLAGS=-O2
+CFLAGS=-O3
 
-all: tests debug
+all: tests rapport
 
 tests: tests.c mymalloc.c mymalloc.h
 
@@ -12,7 +12,10 @@ debug: indent tests.c mymalloc.c mymalloc.h
 indent: mymalloc.c
 	indent -linux mymalloc.c
 
-clean:
-	$(RM) tests debug *.o *.out *.c~ *.log
+report rapport: rapport.md
+	pandoc rapport.md -o rapport.pdf
 
-.PHONY: all indent clean
+clean:
+	$(RM) tests debug *.o *.out *.c~ *.log *.pdf
+
+.PHONY: all report indent clean
