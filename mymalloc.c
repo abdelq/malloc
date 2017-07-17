@@ -40,7 +40,7 @@ block *extend_heap(size_t size)
 void split_block(block * old, size_t size)
 {
 	// New block
-	block *new = old->data + size;
+	block *new = (block *) ((char *)old->data + size);
 	new->prev = old;
 	new->next = old->next;
 	new->size = old->size - size - sizeof(block);
