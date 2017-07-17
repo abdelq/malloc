@@ -1,5 +1,4 @@
 #include <sys/mman.h>
-#include <search.h>
 #include <stdio.h>
 #include "mymalloc.h"
 
@@ -13,7 +12,7 @@
 
 typedef struct block block;
 struct block {
-	block *next, *prev;
+	block *prev, *next;
 	size_t size;
 	void *data;
 };
@@ -22,13 +21,8 @@ block *first_block = NULL;	// First free block
 
 block *extend_heap(size_t size)
 {
-#if DEBUG
-	fprintf(stderr, "extend_heap(%zu)\n", size);
-	fflush(stderr);
-#endif
-
 	if (size < MIN_SIZE)
-		size = WORD_ALIGN(MIN_SIZE);
+		size = MIN_SIZE;
 
 	block *b = MMAP(sizeof(block) + size);
 
@@ -40,37 +34,25 @@ block *extend_heap(size_t size)
 
 	myfree(b->data);
 
-#if DEBUG
-	fprintf(stderr, "extend_heap(%zu): %p\n", size, (void *)b);
-	fflush(stderr);
-#endif
-
 	return b;
 }
 
 void split_block(block * old, size_t size)
 {
-#if DEBUG
-	fprintf(stderr, "split_block(%p, %zu)\n", (void *)old, size);
-	fflush(stderr);
-#endif
-
-	if (sizeof(block) + size > old->size)
-		return;
-
-	block *new;
-
 	// New block
-	new = old->data + size;
-	new->next = NULL;
-	new->prev = NULL;
-	new->size = old->size - (sizeof(block) + size);
+	block *new = old->data + size;
+	new->prev = old;
+	new->next = old->next;
+	new->size = old->size - size - sizeof(block);
 	new->data = new + 1;
 
 	// Old block
+	old->next = new;
 	old->size = size;
 
-	insque(new, old);
+	// Finish inserting new after old
+	if (new->next)
+		new->next->prev = new;
 
 #if DEBUG
 	fprintf(stderr, "Old block: %p, size: %zu, data: %p\n",
@@ -82,54 +64,16 @@ void split_block(block * old, size_t size)
 #endif
 }
 
-void merge_block(block * b)
+void rm_block(block * b)
 {
-	while (b->prev == (void *)b - b->size - sizeof(block)) {
-#if DEBUG
-		fprintf(stderr, "Merging down %p with %p\n",
-			(void *)b, (void *)b->prev);
-		fflush(stderr);
-#endif
+	if (first_block == b)
+		first_block = b->next;
 
-		b->prev->size += b->size;
-		remque(b);
+	if (b->prev)
+		b->prev->next = b->next;
 
-		b = b->prev;
-	}
-
-	while (b->next == (void *)b + sizeof(block) + b->size) {
-#if DEBUG
-		fprintf(stderr, "Merging up %p with %p\n",
-			(void *)b, (void *)b->next);
-		fflush(stderr);
-#endif
-
-		b->size += b->next->size;
-		remque(b->next);
-	}
-}
-
-block *find_free_block(size_t size)
-{
-	block *curr_block = first_block;
-
-	while (curr_block && curr_block->size < size)
-		curr_block = curr_block->next;
-
-	return curr_block;
-}
-
-block *find_right_block(block * b)
-{
-	block *prev_block = NULL;
-	block *curr_block = first_block;
-
-	while (curr_block && curr_block <= b) {
-		prev_block = curr_block;
-		curr_block = curr_block->next;
-	}
-
-	return prev_block;
+	if (b->next)
+		b->next->prev = b->prev;
 }
 
 void *mymalloc(size_t size)
@@ -139,22 +83,26 @@ void *mymalloc(size_t size)
 	fflush(stderr);
 #endif
 
-	if (!size || size > MAX_SIZE)
+	if (!size)
 		return NULL;
 
-	// Align block
 	size = WORD_ALIGN(size);
 
+	if (size > MAX_SIZE)
+		return NULL;
+
 	if (first_block) {
-		block *free_block = find_free_block(size);
+		// Find a free block
+		block *free_block = first_block;
+
+		while (free_block && free_block->size < size)
+			free_block = free_block->next;
 
 		if (free_block) {
-			split_block(free_block, size);
+			if (free_block->size > size + sizeof(block))
+				split_block(free_block, size);
 
-			if (free_block == first_block)
-				first_block = free_block->next;
-
-			remque(free_block);
+			rm_block(free_block);
 
 #if DEBUG
 			fprintf(stderr, "Free block: %p, size: %zu, data: %p\n",
@@ -166,18 +114,16 @@ void *mymalloc(size_t size)
 			return free_block->data;
 		}
 	}
-	// Request a new block
+
 	block *new_block = extend_heap(size);
 
 	if (!new_block)
 		return NULL;
 
-	split_block(new_block, size);
+	if (new_block->size > size + sizeof(block))
+		split_block(new_block, size);
 
-	if (new_block == first_block)
-		first_block = new_block->next;
-
-	remque(new_block);
+	rm_block(new_block);
 
 #if DEBUG
 	fprintf(stderr, "Created block: %p, size: %zu, data: %p\n",
@@ -198,31 +144,21 @@ void myfree(void *ptr)
 	if (!ptr || ptr > MMAP(0))
 		return;
 
-	// Pointer to the block
 	block *b = (block *) ptr - 1;
 
 	if (b->data != ptr)
 		return;
 
 	// Add block to list
-	if (first_block == NULL) {
-		insque(b, NULL);
-		first_block = b;
-		return;
-	}
+	b->prev = NULL;
+	b->next = NULL;
 
-	block *right_block = find_right_block(b);
-
-	if (right_block) {
-		insque(b, right_block);
-	} else {
-		b->prev = NULL;
+	if (first_block) {
 		b->next = first_block;
-		first_block->prev = b;
-
-		first_block = b;
+		b->next->prev = b;
 	}
 
-	// Block merging
-	merge_block(b);
+	first_block = b;
+
+	// TODO Block merging
 }
