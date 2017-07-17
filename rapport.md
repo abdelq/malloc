@@ -39,10 +39,14 @@ d'un `split`. La manipulation de la liste chainée avec les pointeurs
 rendaient ce point plus difficile , surtout que notre liste est
 simplement chainée. Ainsi il faillait qu'on regarde si les adresses
 mémoires des `block` que l'on voulait `merge` étaient contigu en
-mémoire.Pour le `split` l'opération était similaire. Biensûr il
+mémoire. Pour le `split` l'opération était similaire. Biensûr il
 fallait changer la grandeur de nos `block` à la suite de ces
 opérations.  Malheureuseument nous n'avons pas pu faire le `merge`
-puisque celui-ci n'était pas bien implémenté. 
+puisque celui-ci n'était pas bien implémenté. Notre première
+implémentation de `merge` comparait les adresses et le mettait dans la
+bonne place , mais cela ne fonctionnait pas très bien. Donc nous avons
+réglé temporairement en l'ajoutant au début de la liste chainée. Donc
+il nous resterait à implémenter cette fonctionnalité correctement.
 
 ## La logique derrière nos implémentations
 
