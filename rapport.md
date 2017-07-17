@@ -13,24 +13,24 @@ header-includes:
 ## Description du travail
 
 Nous avions à implémenter une réplique approximative de la fonction
-`malloc` de la librarie standard du langage de programmation `C`. Ce
+`malloc` de la librairie standard du langage de programmation `C`. Ce
 travail nous a permis d'en apprendre plus sur le fonctionnement de la
 gestion de mémoire. À partir de la fonction `mmap` nous avons créé des
 fonctions qui vont permettent aux utilisateurs d'allouer de la mémoire
 pour leurs données et de libérer la mémoire efficacement. Tout au long
-de ce rapport, nous allons décrire l'implémentations , les algorithmes
+de ce rapport, nous allons décrire l'implémentation, les algorithmes
 que nous avons choisi et la façon dont nous avons décidé de
 travailler.
 
 ##  Difficultés rencontrées
 
-Les difficultés que nous avons rencontrés durant le travail sont les
-suivantes. La première était de comprendre comment l'appel de `mmap`
-fonctionnait dans le contexte que nous voulions l'utiliser pour le
-travail. Il nous fallait aussi trouver les bon `flags`. Nous l'avions
-trouvé avant que la solution soit divulguée sur studium. La prochaine
+La première difficulté rencontrée durant le travail était de
+comprendre comment l'appel de `mmap` fonctionnait dans le contexte
+que nous voulions l'utiliser pour le travail.
+Il nous fallait aussi trouver les bon `flags`. Nous l'avions
+trouvé avant que la solution soit divulguée sur StudiUM. La prochaine
 difficulté concernait la façon dont nous faisions notre liste
-chainée. Après avoir implémenté correctement notre malloc nous avons
+chainée. Après avoir implémenté correctement notre `malloc` nous avons
 décidé qu'à la place de parcourir tous les éléments pour trouver une
 place libre, on pouvait seulement parcourir les éléments que nous
 savions qu'ils sont libres. Ainsi il fallait modifier notre liste
@@ -39,24 +39,22 @@ d'un `split`. La manipulation de la liste chainée avec les pointeurs
 rendaient ce point plus difficile , surtout que notre liste est
 simplement chainée. Ainsi il faillait qu'on regarde si les adresses
 mémoires des `block` que l'on voulait `merge` étaient contigu en
-mémoire. Pour le `split` l'opération était similaire. Biensûr il
+mémoire. Pour le `split` l'opération était similaire. Bien sûr il
 fallait changer la grandeur de nos `block` à la suite de ces
-opérations.  Malheureuseument nous n'avons pas pu faire le `merge`
+opérations.  Malheureusement, nous n'avons pas pu faire le `merge`
 puisque celui-ci n'était pas bien implémenté. Notre première
 implémentation de `merge` comparait les adresses et le mettait dans la
-bonne place , mais cela ne fonctionnait pas très bien. Donc nous avons
-réglé temporairement en l'ajoutant au début de la liste chainée. Donc
-il nous resterait à implémenter cette fonctionnalité correctement.
+bonne place, mais cela était trop long. Donc nous avons décidé d'épargner ce détail.
 
 ## La logique derrière nos implémentations
 
 Quand nous avons implémenté notre travail notre première priorité fut
 que nos fonctions fonctionnent avec les tests unitaires. Donc à ce
 stade la fonction `mymalloc`et `myfree` fonctionnaient
-correctement. Il suffisait seulement de paufiner notre travail en le
+correctement. Il suffisait seulement de peaufiner notre travail en le
 rendant plus rapide et plus efficace en transformant notre code pour
 qu'il soient le plus élégant et lisible possible. Pour les algorithmes
-et la fonçon dont notre code fonction il suffit de voir la section
+et la façon dont notre code fonction il suffit de voir la section
 documentation de ce rapport.
 
 ## Appréciation générale
@@ -64,7 +62,7 @@ documentation de ce rapport.
 Ce travail fut un bon défi pour notre apprentissage. Il nous a permis
 de mieux comprendre comment on peut implémenter la gestion de mémoire
 dans un langage de programmation. Il nous à aussi bien fait pratiquer
-l'arithmetique des pointeurs et la structure de donnée de la liste
+l'arithmétique des pointeurs et la structure de donnée de la liste
 chainée. Ceci va nous être utile pour le reste de notre carrière en
 informatique puisque c'est un éléments importants et présent dans
 chaque langages de programmation. À la fin de ce travail nous étions
@@ -78,32 +76,32 @@ Pour l'implémentation de notre `malloc` et `free` nous avons utilisé
 une structure `block` contenant une liste chainée, la taille du
 `block` et un pointeurs pour les `data` du programme qu'il
 l'utilisera. Cependant notre liste chainée ne contiendra pas les
-éléments qui sont utilisés , mais plutôt les `block` qui sont libres
+éléments qui sont utilisés, mais plutôt les `block` qui sont libres
 puisque ils sont les seuls qu'on doit parcourir pour allouer de la
-mémoire. 
+mémoire.
 
 ![](images/malloc.png)
 
-Nous avons aussi fait une fonction `extend` qui s'occupe d'allouer la
+Nous avons aussi fait une fonction `extend_heap` qui s'occupe d'allouer la
 mémoire et de retourner cette plage à `malloc`. Nous allouons 4 Ko de
 mémoire pour éviter au maximum de faire des appels à `mmap`. C'est
-aussi le minimum que l'on peut alouer avec `mmap`. Nous avons essayer
+aussi le minimum que l'on peut allouer avec `mmap`. Nous avons essayer
 d'allouer moins que cela , mais `mmap` utilisait quand même 4 Ko.
 
 ## La fonction `malloc`
 
 Cette fonction sert à allouer de l'espace, mais aussi à réutiliser les
-block qui ont été libérer auparavant. Elle prend comme argument la
+blocs qui ont été libérer auparavant. Elle prend comme argument la
 taille de l'espace mémoire que nous voulons.  Pour ce faire nous
 utilisons notre liste chainée. Puisque que tous les plages mémoires de
 cette liste sont libres alors il suffit de regarder si leurs tailles
 sont plus petites que celui de l'élément qu'on désire allouer. Si
-c'est le cas on peut alors allouer cet espace avec `extend`. Ensuite
+c'est le cas on peut alors allouer cet espace avec `extend_heap`. Ensuite
 quand nous avons notre `block` mémoire il suffit de retourner le
-pointeur vers les données. Biensur si on ne trouve pas de `block` de
+pointeur vers les données. Évidemment, si on ne trouve pas de `block` de
 mémoires alors on alloue un `block` de 4 Ko qui aura comme premier
 élément l'élément demandé et le reste sera un `block` libre pour de
-nouvelle allocation. Quand l'éléments sera alloué à un `block` libre
+nouvelle allocation. Quand l'élément sera alloué à un `block` libre
 plus grand que l'espace demandé alors on effectuera un `split`. Le
 `block` sera alors diviser selon la taille demandé. Il faut ensuite
 simplement enlever le `block` que nous venons d'allouer de la liste
@@ -117,7 +115,7 @@ La fonction `free` va effectuer le travail de réarranger la liste
 chainée et d'ajouter les éléments à cette liste. La fonction `free`
 prend en paramètre un pointeur. Ce pointeur est l'emplacement mémoire
 que l'on veut libérer. Au fur et à mesure que les éléments se
-libéront, `free` rajoutera les éléments à la liste chainée. Il les
+libéreront, `free` rajoutera les éléments à la liste chainée. Il les
 rajoutera de façon à optimiser les appels à `merge`. Pour ce faire on
 rajoute les `block` en ordre croissant d'adresse. Ainsi il suffira de
 comparer les adresses des éléments deux à deux et d'effectuer un
@@ -126,7 +124,7 @@ est vide alors on met le nouvel emplacement libre au début . Sinon on
 parcours chaque éléments de la liste pour trouver où le mettre selon
 l'ordre à laquelle sont placé les éléments en mémoire. 
 
-La logique pour le merge est la suivante mais malheureusement nous
+La logique pour le `merge` est la suivante, mais malheureusement nous
 n'avons pas eut le temps de bien l'implémenter. Pour `merge` les
 éléments il faut simplement prendre deux `block` libres et additionner
 leurs tailles et mettre seulement un pointeur au début de celui-ci. Le
@@ -137,9 +135,9 @@ pointeur consiste à celui que l'on fourni à `free` en paramètre.
 
 ## Notre algorithme
 
-Notre algoritme consite à effectuer le moins d'opération pour trouver
+Notre algorithme consiste à effectuer le moins d'opération pour trouver
 la mémoire et de réutiliser le plus de mémoire possible pour que notre
-`malloc` soit efficace. Premierement nous avons utilisé une liste
+`malloc` soit efficace. Premièrement, nous avons utilisé une liste
 chainée simple pour entreposer les informations concernant les `block`
 mémoires. Cette liste sera la seule structure de données que nous
 utiliseront pour implémenter notre `malloc`.  Notre liste contient
@@ -159,15 +157,15 @@ fonction `merge` est aussi implémenter pour permettre d'optimiser les
 ### Force et faiblesse
 
 Une force de notre algorithme est sa simplicité. Cela nous permet de
-bien comprendre son fonctionnment et de facilement rajouter des
-fonctionnalitées. Elle optimise aussi la réutilisation de mémoires
+bien comprendre son fonctionnement et de facilement rajouter des
+fonctionnalités. Elle optimise aussi la réutilisation de mémoires
 avec ses fonctions `merge` et `split`. Une des faiblesses est que
 notre algorithme n'est pas le plus rapide et pourrait être optimisé
 dans le parcours de la liste chainée.
 
 ### Alignement des adresses
 
-Notre algorithme effectue un alignement mémoire. Elle ést éffectué par une macro situer en haut du fichier.
+Notre algorithme effectue un alignement mémoire. Elle est effectuée par une macro situer en haut du fichier.
 
 ```
 #define WORD_ALIGN(size) (((size) + (sizeof(size_t) - 1))
@@ -175,17 +173,17 @@ Notre algorithme effectue un alignement mémoire. Elle ést éffectué par une m
 ```
 
 Elle nous permet d'aligner les emplacements mémoires que nous allouons
-quand on `èxtend` de 4 Ko notre mémoire.
+quand on `extend_heap` de 4 Ko notre mémoire.
 
-### mmap 
+### `mmap`
 
-La quantité de mémoire que l'on demande à `mmap`est 4 Ko puisque peu
+La quantité de mémoire que l'on demande à `mmap` est 4 Ko puisque peu
 importe si on lui demande moins de mémoires il nous fournira un page
 de 4 Ko. Donc nous lui avons demandé le minimum. Si un utilisateur
 demande plus de 5 Mo alors le programme lui retourne un pointeur
 `NULL`. Ainsi il ne peut pas dépasser un certain maximum.
 
-### free
+### `free`
 
 Notre `free` peut prendre n'importe quel emplacement mémoire , mais si
 il n'a jamais été alloué par `malloc` alors elle ne contient pas la
@@ -197,20 +195,14 @@ fourni à `free` n'est pas `NULL` sinon il retourne rien à son tour.
 
 Le code est structuré par deux fonction principal `malloc` et `free`
 qui à leur tour appel plusieurs fonctions dans leur corps. La façon
-dont on parcours la liste chainée est basique. Elle manque d'élégance
-et pourrait être mieu optimisé. On utilise une indentation de la norme `GNU`.
+dont on parcours la liste chainée est basique.
+On utilise une indentation de la norme `Linux` avec `indent(1)`.
 
 ### Les tests unitaires
 
 Nous passons tous les tests unitaires même si certains sont plus long à
-l'execution que d'autre.
+l'exécution que d'autre.
 
 ### Cas mal géré
 
-Dans la fonction `free` on regarde si le pointeur est ` > MMAP(0)` mais pas si il est plus petit que la premier `mmap`fait.
-
-
-
-
-
-
+Dans la fonction `free` on regarde si le pointeur est ` > MMAP(0)` mais pas si il est plus petit que la premier `mmap` effectué.
