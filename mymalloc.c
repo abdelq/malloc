@@ -213,23 +213,11 @@ void myfree(void *ptr)
 		return;
 	}
 
-	block *right_block = find_right_block(b);	// TODO Rename
+	b->prev = NULL;
+	b->next = first_block;
 
-	if (!right_block) {
-		b->prev = NULL;
-		b->next = first_block;
-
-		b->next->prev = b;
-		first_block = b;
-	} else {
-		// TODO Dry this up, insertion after is repeated in split_block too
-		b->prev = right_block;
-		b->next = right_block->next;
-
-		b->prev->next = b;
-		if (b->next)
-			b->next->prev = b;
-	}
+	b->next->prev = b;
+	first_block = b;
 
 	// merge_block(b); // TODO Block merging
 }
